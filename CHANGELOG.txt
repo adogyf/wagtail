@@ -24,13 +24,16 @@ Changelog
  * Fix: Remove duplicate border radius of avatars (Benjamin Thurm)
  * Fix: Site.get_site_root_paths() preferring other sites over the default when some sites share the same root_page (Andy Babic)
  * Fix: Pages with missing model definitions no longer crash the API (Abdulmalik Abdulwahab)
- * Fix: Strip null characters from paths when checking for redirects (Andrew Crewdson)
+ * Fix: Rich text image chooser no longer skips format selection after a validation error (Matt Westcott)
+ * Fix: Null characters in URLs no longer crash the redirect middleware on PostgreSQL (Andrew Crewdson, Matt Westcott)
 
 
-2.1.1 (xx.xx.xxxx) - IN DEVELOPMENT
+2.1.1 (04.07.2018)
 ~~~~~~~~~~~~~~~~~~
 
  * Fix: Site.get_site_root_paths() preferring other sites over the default when some sites share the same root_page (Andy Babic)
+ * Fix: Rich text image chooser no longer skips format selection after a validation error (Matt Westcott)
+ * Fix: Null characters in URLs no longer crash the redirect middleware on PostgreSQL (Matt Westcott)
 
 
 2.1 (22.05.2018)
@@ -185,6 +188,15 @@ Changelog
  * Fix: Prevent style leak of Wagtail panel icons in widgets using ``h2`` elements (THibaud Colas)
 
 
+1.13.2 (04.07.2018)
+~~~~~~~~~~~~~~~~~~~
+
+ * Fix: Fix support of `ATOMIC_REBUILD` for projects with Elasticsearch client >=1.7.0 (Mikalai Radchuk)
+ * Fix: Logging an indexing failure on an object with a non-ASCII representation no longer crashes on Python 2 (Aram Dulyan)
+ * Fix: Rich text image chooser no longer skips format selection after a validation error (Matt Westcott)
+ * Fix: Null characters in URLs no longer crash the redirect middleware on PostgreSQL (Matt Westcott)
+
+
 1.13.1 (17.11.2017)
 ~~~~~~~~~~~~~~~~~~~
 
@@ -227,6 +239,15 @@ Changelog
  * Fix: Custom display page titles defined with `get_admin_display_title` are now shown in search results (Ben Sturmfels, Matt Westcott)
  * Fix: Custom PageManagers now return the correct PageQuerySet subclass (Matt Westcott)
  * Fix: API listing views no longer fail when no site records are defined (Karl Hobley)
+
+
+1.12.4 (04.07.2018)
+~~~~~~~~~~~~~~~~~~~
+
+ * Fix: Fix support of `ATOMIC_REBUILD` for projects with Elasticsearch client >=1.7.0 (Mikalai Radchuk)
+ * Fix: Logging an indexing failure on an object with a non-ASCII representation no longer crashes on Python 2 (Aram Dulyan)
+ * Fix: Rich text image chooser no longer skips format selection after a validation error (Matt Westcott)
+ * Fix: Null characters in URLs no longer crash the redirect middleware on PostgreSQL (Matt Westcott)
 
 
 1.12.3 (17.11.2017)

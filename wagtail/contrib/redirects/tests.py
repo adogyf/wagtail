@@ -78,8 +78,6 @@ class TestRedirects(TestCase):
 
         self.assertEqual('/', normalise_path('/'))  # '/' should stay '/'
 
-        self.assertEqual('/foo?bar=baz', normalise_path('/foo?bar=baz%00'))  # Strip NULLs
-
         # Normalise some rubbish to make sure it doesn't crash
         normalise_path('This is not a URL')
         normalise_path('//////hello/world')
@@ -274,6 +272,19 @@ class TestRedirects(TestCase):
         response = self.client.get('/t%C3%A9sting-%C3%BCnicode/')
 
         self.assertRedirects(response, '/redirectto', status_code=301, fetch_redirect_response=False)
+
+    def test_reject_null_characters(self):
+        response = self.client.get('/test%00test/')
+        self.assertEqual(response.status_code, 404)
+
+        response = self.client.get('/test\0test/')
+        self.assertEqual(response.status_code, 404)
+
+        response = self.client.get('/test/?foo=%00bar')
+        self.assertEqual(response.status_code, 404)
+
+        response = self.client.get('/test/?foo=\0bar')
+        self.assertEqual(response.status_code, 404)
 
 
 class TestRedirectsIndexView(TestCase, WagtailTestUtils):
