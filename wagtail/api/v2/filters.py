@@ -1,5 +1,8 @@
 from django.conf import settings
 from django.db import models
+from django.utils.encoding import force_text
+from django.utils.translation import ugettext_lazy as _
+from rest_framework.compat import coreapi, coreschema
 from rest_framework.filters import BaseFilterBackend
 from taggit.managers import TaggableManager
 
@@ -12,6 +15,8 @@ from .utils import BadRequestError, pages_for_site, parse_boolean
 
 
 class FieldsFilter(BaseFilterBackend):
+    filter_description = 'Filter results using an exact match.'
+
     def filter_queryset(self, request, queryset, view):
         """
         This performs field level filtering on the result set
@@ -52,6 +57,36 @@ class FieldsFilter(BaseFilterBackend):
 
         return queryset
 
+    def get_schema_fields(self, view):
+        assert coreapi is not None, 'coreapi must be installed to use `get_schema_fields()`'
+        assert coreschema is not None, 'coreschema must be installed to use `get_schema_fields()`'
+        schema_fields = []
+        if hasattr(view, 'model'):
+            fields = set(view.get_available_fields(view.model, db_fields_only=True))
+            for field in fields:
+                description = 'Filter results using an exact match.'
+                if isinstance(field, (models.BooleanField, models.NullBooleanField)):
+                    schema_type = coreschema.Boolean
+                elif isinstance(field, (models.IntegerField, models.AutoField)):
+                    schema_type = coreschema.Integer
+                else:
+                    schema_type = coreschema.String
+
+                if isinstance(field, TaggableManager):
+                    description = 'Filter results using a comma-separated list of tags.'
+
+                schema_field = coreapi.Field(
+                    name=field.name,
+                    required=False,
+                    location='query',
+                    schema=schema_type(
+                        title=force_text(_(field.name.title())),
+                        description=force_text(_(description))
+                    )
+                )
+                schema_fields.append(schema_field)
+        return schema_fields
+
 
 class OrderingFilter(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
@@ -65,8 +100,12 @@ class OrderingFilter(BaseFilterBackend):
         And random ordering
         Eg: ?order=random
         """
-        if 'order' in request.GET:
-            order_by = request.GET['order']
+        ordering_param = 'order'
+        ordering_title = _('Ordering')
+        ordering_description = _('Which field to use when ordering the results.')
+
+        if self.ordering_param in request.GET:
+            order_by = request.GET[self.ordering_param]
 
             # Random ordering
             if order_by == 'random':
@@ -97,6 +136,22 @@ class OrderingFilter(BaseFilterBackend):
         return queryset
 
 
+    def get_schema_fields(self, view):
+        assert coreapi is not None, 'coreapi must be installed to use `get_schema_fields()`'
+        assert coreschema is not None, 'coreschema must be installed to use `get_schema_fields()`'
+        return [
+            coreapi.Field(
+                name=self.ordering_param,
+                required=False,
+                location='query',
+                schema=coreschema.String(
+                    title=force_text(self.ordering_title),
+                    description=force_text(self.ordering_description)
+                )
+            )
+        ]
+
+
 class SearchFilter(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         """
@@ -104,8 +159,11 @@ class SearchFilter(BaseFilterBackend):
         Eg: ?search=James Joyce
         """
         search_enabled = getattr(settings, 'WAGTAILAPI_SEARCH_ENABLED', True)
+        search_param = 'search'
+        search_title = _('Search')
+        search_description = _('Perform a full-text search on the result set.')
 
-        if 'search' in request.GET:
+        if self.search_param in request.GET:
             if not search_enabled:
                 raise BadRequestError("search is disabled")
 
@@ -113,7 +171,7 @@ class SearchFilter(BaseFilterBackend):
             if getattr(queryset, '_filtered_by_tag', False):
                 raise BadRequestError("filtering by tag with a search query is not supported")
 
-            search_query = request.GET['search']
+            search_query = request.GET[self.search_param]
             search_operator = request.GET.get('search_operator', None)
             order_by_relevance = 'order' not in request.GET
 
@@ -126,6 +184,21 @@ class SearchFilter(BaseFilterBackend):
                 raise BadRequestError("cannot order by '{}' while searching (field is not indexed)".format(e.field_name))
 
         return queryset
+
+    def get_schema_fields(self, view):
+        assert coreapi is not None, 'coreapi must be installed to use `get_schema_fields()`'
+        assert coreschema is not None, 'coreschema must be installed to use `get_schema_fields()`'
+        return [
+            coreapi.Field(
+                name=self.search_param,
+                required=False,
+                location='query',
+                schema=coreschema.String(
+                    title=force_text(self.search_title),
+                    description=force_text(self.search_description)
+                )
+            )
+        ]
 
 
 class ChildOfFilter(BaseFilterBackend):
