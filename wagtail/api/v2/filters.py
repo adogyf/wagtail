@@ -15,7 +15,8 @@ from .utils import BadRequestError, pages_for_site, parse_boolean
 
 
 class FieldsFilter(BaseFilterBackend):
-    filter_description = 'Filter results using an exact match.'
+    base_description = _('Filter results using an exact match.')
+    taggable_description = _('Filter results using a comma-separated list of tags.')
 
     def filter_queryset(self, request, queryset, view):
         """
@@ -64,7 +65,6 @@ class FieldsFilter(BaseFilterBackend):
         if hasattr(view, 'model'):
             fields = set(view.get_available_fields(view.model, db_fields_only=True))
             for field in fields:
-                description = 'Filter results using an exact match.'
                 if isinstance(field, (models.BooleanField, models.NullBooleanField)):
                     schema_type = coreschema.Boolean
                 elif isinstance(field, (models.IntegerField, models.AutoField)):
@@ -72,16 +72,19 @@ class FieldsFilter(BaseFilterBackend):
                 else:
                     schema_type = coreschema.String
 
+                description = self.base_description
                 if isinstance(field, TaggableManager):
-                    description = 'Filter results using a comma-separated list of tags.'
+                    description = self.taggable_description
+
+                title = _(field.name.title())
 
                 schema_field = coreapi.Field(
                     name=field.name,
                     required=False,
                     location='query',
                     schema=schema_type(
-                        title=force_text(_(field.name.title())),
-                        description=force_text(_(description))
+                        title=force_text(title),
+                        description=force_text(description)
                     )
                 )
                 schema_fields.append(schema_field)
@@ -89,6 +92,10 @@ class FieldsFilter(BaseFilterBackend):
 
 
 class OrderingFilter(BaseFilterBackend):
+    query_param = 'order'
+    title = _('Ordering')
+    description = _('Which field to use when ordering the results.')
+
     def filter_queryset(self, request, queryset, view):
         """
         This applies ordering to the result set
@@ -100,12 +107,8 @@ class OrderingFilter(BaseFilterBackend):
         And random ordering
         Eg: ?order=random
         """
-        ordering_param = 'order'
-        ordering_title = _('Ordering')
-        ordering_description = _('Which field to use when ordering the results.')
-
-        if self.ordering_param in request.GET:
-            order_by = request.GET[self.ordering_param]
+        if self.query_param in request.GET:
+            order_by = request.GET[self.query_param]
 
             # Random ordering
             if order_by == 'random':
@@ -141,29 +144,30 @@ class OrderingFilter(BaseFilterBackend):
         assert coreschema is not None, 'coreschema must be installed to use `get_schema_fields()`'
         return [
             coreapi.Field(
-                name=self.ordering_param,
+                name=self.query_param,
                 required=False,
                 location='query',
                 schema=coreschema.String(
-                    title=force_text(self.ordering_title),
-                    description=force_text(self.ordering_description)
+                    title=force_text(self.title),
+                    description=force_text(self.description)
                 )
             )
         ]
 
 
 class SearchFilter(BaseFilterBackend):
+    query_param = 'search'
+    title = _('Search')
+    description = _('Perform a full-text search on the result set.')
+
     def filter_queryset(self, request, queryset, view):
         """
         This performs a full-text search on the result set
         Eg: ?search=James Joyce
         """
         search_enabled = getattr(settings, 'WAGTAILAPI_SEARCH_ENABLED', True)
-        search_param = 'search'
-        search_title = _('Search')
-        search_description = _('Perform a full-text search on the result set.')
 
-        if self.search_param in request.GET:
+        if self.query_param in request.GET:
             if not search_enabled:
                 raise BadRequestError("search is disabled")
 
@@ -171,7 +175,7 @@ class SearchFilter(BaseFilterBackend):
             if getattr(queryset, '_filtered_by_tag', False):
                 raise BadRequestError("filtering by tag with a search query is not supported")
 
-            search_query = request.GET[self.search_param]
+            search_query = request.GET[self.query_param]
             search_operator = request.GET.get('search_operator', None)
             order_by_relevance = 'order' not in request.GET
 
@@ -190,12 +194,12 @@ class SearchFilter(BaseFilterBackend):
         assert coreschema is not None, 'coreschema must be installed to use `get_schema_fields()`'
         return [
             coreapi.Field(
-                name=self.search_param,
+                name=self.query_param,
                 required=False,
                 location='query',
                 schema=coreschema.String(
-                    title=force_text(self.search_title),
-                    description=force_text(self.search_description)
+                    title=force_text(self.title),
+                    description=force_text(self.description)
                 )
             )
         ]
@@ -206,6 +210,11 @@ class ChildOfFilter(BaseFilterBackend):
     Implements the ?child_of filter used to filter the results to only contain
     pages that are direct children of the specified page.
     """
+    query_param = 'child_of'
+    title = _('Child of')
+    description = _('Filter the results to only contain pages that are '
+                    'direct children of the specified page.')
+
     def get_root_page(self, request):
         return Page.get_first_root_node()
 
@@ -213,18 +222,20 @@ class ChildOfFilter(BaseFilterBackend):
         return Page.objects.get(id=page_id)
 
     def filter_queryset(self, request, queryset, view):
-        if 'child_of' in request.GET:
+        if self.query_param in request.GET:
             try:
-                parent_page_id = int(request.GET['child_of'])
+                parent_page_id = int(request.GET[self.query_param])
                 if parent_page_id < 0:
                     raise ValueError()
 
                 parent_page = self.get_page_by_id(request, parent_page_id)
             except ValueError:
-                if request.GET['child_of'] == 'root':
+                if request.GET[self.query_param] == 'root':
                     parent_page = self.get_root_page(request)
                 else:
-                    raise BadRequestError("child_of must be a positive integer")
+                    raise BadRequestError(
+                            "{param} must be a positive integer".format(
+                                param=self.query_param))
             except Page.DoesNotExist:
                 raise BadRequestError("parent page doesn't exist")
 
@@ -233,12 +244,32 @@ class ChildOfFilter(BaseFilterBackend):
 
         return queryset
 
+    def get_schema_fields(self, view):
+        assert coreapi is not None, 'coreapi must be installed to use `get_schema_fields()`'
+        assert coreschema is not None, 'coreschema must be installed to use `get_schema_fields()`'
+        return [
+            coreapi.Field(
+                name=self.query_param,
+                required=False,
+                location='query',
+                schema=coreschema.Integer(
+                    title=force_text(self.title),
+                    description=force_text(self.description)
+                )
+            )
+        ]
+
 
 class RestrictedChildOfFilter(ChildOfFilter):
     """
     A restricted version of ChildOfFilter that only allows pages in the current
     site to be specified.
     """
+    title = _('Restricted child of')
+    description = _('Filter the results to only contain pages that are '
+                    'direct children of the specified page and are '
+                    'part of the current site.')
+
     def get_root_page(self, request):
         return request.site.root_page
 
@@ -252,6 +283,11 @@ class DescendantOfFilter(BaseFilterBackend):
     Implements the ?decendant_of filter which limits the set of pages to a
     particular branch of the page tree.
     """
+    query_param = 'descendant_of'
+    title = _('Descendant of')
+    description = _('Filter which limits the set of pages to a '
+                    'particular branch of the page tree.')
+
     def get_root_page(self, request):
         return Page.get_first_root_node()
 
@@ -259,20 +295,24 @@ class DescendantOfFilter(BaseFilterBackend):
         return Page.objects.get(id=page_id)
 
     def filter_queryset(self, request, queryset, view):
-        if 'descendant_of' in request.GET:
+        if self.query_param in request.GET:
             if hasattr(queryset, '_filtered_by_child_of'):
-                raise BadRequestError("filtering by descendant_of with child_of is not supported")
+                raise BadRequestError(
+                        "filtering by {param} with child_of is not supported".format(
+                            param=self.query_param))
             try:
-                parent_page_id = int(request.GET['descendant_of'])
+                parent_page_id = int(request.GET[self.query_param])
                 if parent_page_id < 0:
                     raise ValueError()
 
                 parent_page = self.get_page_by_id(request, parent_page_id)
             except ValueError:
-                if request.GET['descendant_of'] == 'root':
+                if request.GET[self.query_param] == 'root':
                     parent_page = self.get_root_page(request)
                 else:
-                    raise BadRequestError("descendant_of must be a positive integer")
+                    raise BadRequestError(
+                            "{param} must be a positive integer".format(
+                                param=self.query_param))
             except Page.DoesNotExist:
                 raise BadRequestError("ancestor page doesn't exist")
 
@@ -280,12 +320,32 @@ class DescendantOfFilter(BaseFilterBackend):
 
         return queryset
 
+    def get_schema_fields(self, view):
+        assert coreapi is not None, 'coreapi must be installed to use `get_schema_fields()`'
+        assert coreschema is not None, 'coreschema must be installed to use `get_schema_fields()`'
+        return [
+            coreapi.Field(
+                name=self.query_param,
+                required=False,
+                location='query',
+                schema=coreschema.Integer(
+                    title=force_text(self.title),
+                    description=force_text(self.description)
+                )
+            )
+        ]
+
 
 class RestrictedDescendantOfFilter(DescendantOfFilter):
     """
     A restricted version of DecendantOfFilter that only allows pages in the current
     site to be specified.
     """
+    title = _('Restricted descendant of')
+    description = _('Filter which limits the set of pages to a '
+                    'particular branch of the page tree in '
+                    'the current site.')
+
     def get_root_page(self, request):
         return request.site.root_page
 
@@ -295,6 +355,10 @@ class RestrictedDescendantOfFilter(DescendantOfFilter):
 
 
 class ForExplorerFilter(BaseFilterBackend):
+    query_param = 'for_explorer'
+    title = _('For explorer')
+    description = _('')
+
     def filter_queryset(self, request, queryset, view):
         if request.GET.get('for_explorer'):
             if not hasattr(queryset, '_filtered_by_child_of'):
@@ -305,3 +369,18 @@ class ForExplorerFilter(BaseFilterBackend):
                 queryset = hook(parent_page, queryset, request)
 
         return queryset
+
+    def get_schema_fields(self, view):
+        assert coreapi is not None, 'coreapi must be installed to use `get_schema_fields()`'
+        assert coreschema is not None, 'coreschema must be installed to use `get_schema_fields()`'
+        return [
+            coreapi.Field(
+                name=self.query_param,
+                required=False,
+                location='query',
+                schema=coreschema.String(
+                    title=force_text(self.title),
+                    description=force_text(self.description)
+                )
+            )
+        ]
