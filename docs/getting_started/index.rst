@@ -4,7 +4,7 @@ Getting started
 Wagtail is built on the `Django web framework <https://www.djangoproject.com/>`_, so this document assumes you've already got the essentials installed. But if not, those essentials are:
 
  * `Python <https://www.python.org/downloads/>`_
- * `pip <https://pip.pypa.io/en/latest/installing.html>`_ (Note that pip is included by default with Python 2.7.9 and later and Python 3.4 and later)
+ * `pip <https://pip.pypa.io/en/latest/installing.html>`_ (Note that pip is included by default with Python 3.4 and later)
 
 We'd also recommend Virtualenv, which provides isolated Python environments:
 
@@ -41,7 +41,7 @@ Inside your ``mysite`` folder, we now just run the setup steps necessary for any
 
 Your site is now accessible at ``http://localhost:8000``, with the admin backend available at ``http://localhost:8000/admin/``.
 
-This will set you up with a new standalone Wagtail project. If you'd like to add Wagtail to an existing Django project instead, see :doc:`integrating_into_django`.
+This will set you up with a new stand-alone Wagtail project. If you'd like to add Wagtail to an existing Django project instead, see :doc:`integrating_into_django`.
 
 There are a few optional packages which are not installed by default but are recommended to improve performance or add features to Wagtail, including:
 
@@ -50,8 +50,9 @@ There are a few optional packages which are not installed by default but are rec
 
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     tutorial
     demo_site
     integrating_into_django
+    the_zen_of_wagtail

@@ -29,7 +29,7 @@ This will install PyOpenCV into your site packages. If you are using a virtual e
 Enabling site packages in the virtual environment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you are not using a virtual envionment, you can skip this step.
+If you are not using a virtual environment, you can skip this step.
 
 Enabling site packages is different depending on whether you are using pyvenv (Python 3.3+ only) or virtualenv to manage your virtual environment.
 
@@ -79,7 +79,7 @@ You can manually run feature detection on all images by running the following co
 
  .. code-block:: python
 
-    from wagtail.wagtailimages.models import Image
+    from wagtail.images.models import Image
 
     for image in Image.objects.all():
         if not image.has_focal_point():

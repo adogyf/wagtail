@@ -1,3 +1,5 @@
+.. _api_v2_configuration:
+
 ==================================
 Wagtail API v2 Configuration Guide
 ==================================
@@ -44,8 +46,8 @@ can hook into the rest of your project.
 Wagtail provides three endpoint classes you can use:
 
  - Pages :class:`wagtail.api.v2.endpoints.PagesAPIEndpoint`
- - Images :class:`wagtail.wagtailimages.api.v2.endpoints.ImagesAPIEndpoint`
- - Documents :class:`wagtail.wagtaildocs.api.v2.endpoints.DocumentsAPIEndpoint`
+ - Images :class:`wagtail.images.api.v2.endpoints.ImagesAPIEndpoint`
+ - Documents :class:`wagtail.documents.api.v2.endpoints.DocumentsAPIEndpoint`
 
 You can subclass any of these endpoint classes to customise their functionality.
 Additionally, there is a base endpoint class you can use for adding different
@@ -60,8 +62,8 @@ types in their default configuration:
 
     from wagtail.api.v2.endpoints import PagesAPIEndpoint
     from wagtail.api.v2.router import WagtailAPIRouter
-    from wagtail.wagtailimages.api.v2.endpoints import ImagesAPIEndpoint
-    from wagtail.wagtaildocs.api.v2.endpoints import DocumentsAPIEndpoint
+    from wagtail.images.api.v2.endpoints import ImagesAPIEndpoint
+    from wagtail.documents.api.v2.endpoints import DocumentsAPIEndpoint
 
     # Create the router. "wagtailapi" is the URL namespace
     api_router = WagtailAPIRouter('wagtailapi')
@@ -114,7 +116,7 @@ For example:
     from wagtail.api import APIField
 
     class BlogPageAuthor(Orderable):
-        page = models.ForeignKey('blog.BlogPage', related_name='authors')
+        page = models.ForeignKey('blog.BlogPage', on_delete=models.CASCADE, related_name='authors')
         name = models.CharField(max_length=255)
 
         api_fields = [
@@ -125,7 +127,7 @@ For example:
     class BlogPage(Page):
         published_date = models.DateTimeField()
         body = RichTextField()
-        feed_image = models.ForeignKey('wagtailimages.Image', ...)
+        feed_image = models.ForeignKey('wagtailimages.Image', on_delete=models.SET_NULL, null=True, ...)
         private_field = models.CharField(max_length=255)
 
         # Export fields over the API
@@ -143,8 +145,6 @@ fields, you must select the ``blog.BlogPage`` type using the ``?type``
 
 Custom serialisers
 ------------------
-
-.. versionadded: 1.10
 
 Serialisers_ are used to convert the database representation of a model into
 JSON format. You can override the serialiser for any field using the
@@ -197,9 +197,7 @@ This adds two fields to the API (other fields omitted for brevity):
 Images in the API
 -----------------
 
-.. versionadded: 1.10
-
-The :class:`~wagtail.wagtailimages.api.fields.ImageRenditionField` serialiser
+The :class:`~wagtail.images.api.fields.ImageRenditionField` serialiser
 allows you to add renditions of images into your API. It requires an image
 filter string specifying the resize operations to perform on the image. It can
 also take the ``source`` keyword argument described above.
@@ -208,7 +206,7 @@ For example:
 
 .. code-block:: python
 
-    from wagtail.wagtailimages.api.fields.ImageRenditionField
+    from wagtail.images.api.fields import ImageRenditionField
 
     class BlogPage(Page):
         ...
@@ -274,4 +272,4 @@ endpoints.
 (default: 20)
 
 This allows you to change the maximum number of results a user can request at a
-time. This applies to all endpoints.
+time. This applies to all endpoints. Set to ``None`` for no limit.

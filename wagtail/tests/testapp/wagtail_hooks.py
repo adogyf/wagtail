@@ -1,11 +1,12 @@
-from __future__ import absolute_import, unicode_literals
-
+from django import forms
+from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.http import HttpResponse
 
-from wagtail.wagtailadmin.menu import MenuItem
-from wagtail.wagtailadmin.search import SearchArea
-from wagtail.wagtailcore import hooks
-from wagtail.wagtailcore.whitelist import allow_without_attributes, attribute_rule, check_url
+import wagtail.admin.rich_text.editors.draftail.features as draftail_features
+from wagtail.admin.menu import MenuItem
+from wagtail.admin.rich_text import HalloPlugin
+from wagtail.admin.search import SearchArea
+from wagtail.core import hooks
 
 
 # Register one hook using decorators...
@@ -14,23 +15,12 @@ def editor_css():
     return """<link rel="stylesheet" href="/path/to/my/custom.css">"""
 
 
+# And the other using old-style function calls
 def editor_js():
     return """<script src="/path/to/my/custom.js"></script>"""
 
 
 hooks.register('insert_editor_js', editor_js)
-
-
-# And the other using old-style function calls
-
-def whitelister_element_rules():
-    return {
-        'blockquote': allow_without_attributes,
-        'a': attribute_rule({'href': check_url, 'target': True}),
-    }
-
-
-hooks.register('construct_whitelister_element_rules', whitelister_element_rules)
 
 
 def block_googlebot(page, request, serve_args, serve_kwargs):
@@ -42,6 +32,10 @@ hooks.register('before_serve_page', block_googlebot)
 
 
 class KittensMenuItem(MenuItem):
+    @property
+    def media(self):
+        return forms.Media(js=[static('testapp/js/kittens.js')])
+
     def is_shown(self, request):
         return not request.GET.get('hide-kittens', False)
 
@@ -84,3 +78,29 @@ def polite_pages_only(parent_page, pages, request):
         pages = pages.filter(slug__startswith='hello')
 
     return pages
+
+
+@hooks.register('construct_explorer_page_queryset')
+def hide_hidden_pages(parent_page, pages, request):
+    # Pages with 'hidden' in their title are hidden. Magic!
+    return pages.exclude(title__icontains='hidden')
+
+
+# register 'blockquote' as a rich text feature supported by a hallo.js plugin
+# and a Draftail feature
+@hooks.register('register_rich_text_features')
+def register_blockquote_feature(features):
+    features.register_editor_plugin(
+        'hallo', 'blockquote', HalloPlugin(
+            name='halloblockquote',
+            js=['testapp/js/hallo-blockquote.js'],
+            css={'all': ['testapp/css/hallo-blockquote.css']},
+        )
+    )
+    features.register_editor_plugin(
+        'draftail', 'blockquote', draftail_features.EntityFeature(
+            {},
+            js=['testapp/js/draftail-blockquote.js'],
+            css={'all': ['testapp/css/draftail-blockquote.css']},
+        )
+    )

@@ -13,7 +13,7 @@ You can configure which backend to use with the ``WAGTAILSEARCH_BACKENDS`` setti
 
   WAGTAILSEARCH_BACKENDS = {
       'default': {
-          'BACKEND': 'wagtail.wagtailsearch.backends.db',
+          'BACKEND': 'wagtail.search.backends.db',
       }
   }
 
@@ -44,6 +44,9 @@ If you have disabled auto update, you must run the :ref:`update_index` command o
 ``ATOMIC_REBUILD``
 ==================
 
+.. warning::
+    This option may not work on Elasticsearch version 5.4 and above, due to `a bug in the handling of aliases <https://github.com/elastic/elasticsearch/issues/24644>`_ affecting these releases.
+
 By default (when using the Elasticsearch backend), when the ``update_index`` command is run, Wagtail deletes the index and rebuilds it from scratch. This causes the search engine to not return results until the rebuild is complete and is also risky as you can't rollback if an error occurs.
 
 Setting the ``ATOMIC_REBUILD`` setting to ``True`` makes Wagtail rebuild into a separate index while keep the old index active until the new one is fully built. When the rebuild is finished, the indexes are swapped atomically and the old index is deleted.
@@ -58,7 +61,7 @@ Here's a list of backends that Wagtail supports out of the box.
 Database Backend (default)
 --------------------------
 
-``wagtail.wagtailsearch.backends.db``
+``wagtail.search.backends.db``
 
 The database backend is very basic and is intended only to be used in development and on small sites. It cannot order results by relevance, severely hampering its usefulness when searching a large collection of pages.
 
@@ -86,29 +89,21 @@ See :ref:`postgres_search` for more detail.
 Elasticsearch Backend
 ---------------------
 
-.. versionchanged:: 1.7
+.. versionchanged:: 2.1
 
-    Support for Elasticsearch 2.x was added
+    Support for Elasticsearch 6.x was added
 
-.. versionchanged:: 1.8
+Elasticsearch versions 2, 5 and 6 are supported. Use the appropriate backend for your version:
 
-    Support for Elasticsearch 5.x was added
+``wagtail.search.backends.elasticsearch2`` (Elasticsearch 2.x)
 
-Elasticsearch versions 1, 2 and 5 are supported. Use the appropriate backend for your version:
+``wagtail.search.backends.elasticsearch5`` (Elasticsearch 5.x)
 
-``wagtail.wagtailsearch.backends.elasticsearch`` (Elasticsearch 1.x)
-
-``wagtail.wagtailsearch.backends.elasticsearch2`` (Elasticsearch 2.x)
-
-``wagtail.wagtailsearch.backends.elasticsearch5`` (Elasticsearch 5.x)
+``wagtail.search.backends.elasticsearch6`` (Elasticsearch 6.x)
 
 Prerequisites are the `Elasticsearch`_ service itself and, via pip, the `elasticsearch-py`_ package. The major version of the package must match the installed version of Elasticsearch:
 
 .. _Elasticsearch: https://www.elastic.co/downloads/elasticsearch
-
-.. code-block:: console
-
-  $ pip install "elasticsearch>=1.0.0,<2.0.0"  # for Elasticsearch 1.x
 
 .. code-block:: console
 
@@ -118,13 +113,17 @@ Prerequisites are the `Elasticsearch`_ service itself and, via pip, the `elastic
 
   pip install "elasticsearch>=5.0.0,<6.0.0"  # for Elasticsearch 5.x
 
+.. code-block:: sh
+
+  pip install "elasticsearch>=6.0.0,<7.0.0"  # for Elasticsearch 6.x
+
 The backend is configured in settings:
 
 .. code-block:: python
 
   WAGTAILSEARCH_BACKENDS = {
       'default': {
-          'BACKEND': 'wagtail.wagtailsearch.backends.elasticsearch2',
+          'BACKEND': 'wagtail.search.backends.elasticsearch2',
           'URLS': ['http://localhost:9200'],
           'INDEX': 'wagtail',
           'TIMEOUT': 5,
@@ -135,7 +134,7 @@ The backend is configured in settings:
 
 Other than ``BACKEND``, the keys are optional and default to the values shown. Any defined key in ``OPTIONS`` is passed directly to the Elasticsearch constructor as case-sensitive keyword argument (e.g. ``'max_retries': 1``).
 
-``INDEX_SETTINGS`` is a dictionary used to override the default settings to create the index. The default settings are defined inside the ``ElasticsearchSearchBackend`` class in the module ``wagtail/wagtail/wagtailsearch/backends/elasticsearch.py``. Any new key is added, any existing key, if not a dictionary, is replaced with the new value. Here's a sample on how to configure the number of shards and setting the italian LanguageAnalyzer as the default analyzer:
+``INDEX_SETTINGS`` is a dictionary used to override the default settings to create the index. The default settings are defined inside the ``ElasticsearchSearchBackend`` class in the module ``wagtail/wagtail/wagtailsearch/backends/elasticsearch.py``. Any new key is added, any existing key, if not a dictionary, is replaced with the new value. Here's a sample on how to configure the number of shards and setting the Italian LanguageAnalyzer as the default analyzer:
 
 .. code-block:: python
 
@@ -146,11 +145,11 @@ Other than ``BACKEND``, the keys are optional and default to the values shown. A
               'settings': {
                   'index': {
                       'number_of_shards': 1,
-                      'analysis': {
-                          'analyzer': {
-                              'default': {
-                                  'type': 'italian'
-                              }
+                  },
+                  'analysis': {
+                      'analyzer': {
+                          'default': {
+                              'type': 'italian'
                           }
                       }
                   }
@@ -175,22 +174,24 @@ The Elasticsearch backend is compatible with `Amazon Elasticsearch Service`_, bu
 
 .. code-block:: python
 
-  from elasticsearch import Elasticsearch, RequestsHttpConnection
+  from elasticsearch import RequestsHttpConnection
   from requests_aws4auth import AWS4Auth
 
   WAGTAILSEARCH_BACKENDS = {
       'default': {
-          'BACKEND': 'wagtail.wagtailsearch.backends.elasticsearch',
+          'BACKEND': 'wagtail.search.backends.elasticsearch2',
           'INDEX': 'wagtail',
           'TIMEOUT': 5,
           'HOSTS': [{
-            'host': 'YOURCLUSTER.REGION.es.amazonaws.com',
-            'port': 443,
-            'use_ssl': True,
-            'verify_certs': True,
-            'http_auth': AWS4Auth('ACCESS_KEY', 'SECRET_KEY', 'REGION', 'es'),
+              'host': 'YOURCLUSTER.REGION.es.amazonaws.com',
+              'port': 443,
+              'use_ssl': True,
+              'verify_certs': True,
+              'http_auth': AWS4Auth('ACCESS_KEY', 'SECRET_KEY', 'REGION', 'es'),
           }],
-          'connection_class': RequestsHttpConnection,
+          'OPTIONS': {
+              'connection_class': RequestsHttpConnection,
+          },
       }
   }
 

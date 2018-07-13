@@ -3,13 +3,13 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
-# Stein Strindhaug <stein.strindhaug@gmail.com>, 2016
+# Stein Strindhaug <stein.strindhaug@gmail.com>, 2016-2018
 msgid ""
 msgstr ""
 "Project-Id-Version: Wagtail\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-02-06 12:33+0000\n"
-"PO-Revision-Date: 2016-11-18 14:17+0000\n"
+"POT-Creation-Date: 2018-05-04 20:23+0100\n"
+"PO-Revision-Date: 2018-05-07 12:24+0000\n"
 "Last-Translator: Stein Strindhaug <stein.strindhaug@gmail.com>\n"
 "Language-Team: Norwegian Bokmål (http://www.transifex.com/torchbox/wagtail/"
 "language/nb/)\n"
@@ -18,6 +18,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Language: nb\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Wagtail ModelAdmin"
+msgstr "Wagtail-modelladmin"
 
 msgid "Parent page"
 msgstr "Foreldreside"
@@ -82,8 +85,8 @@ msgstr ""
 msgid "Continue"
 msgstr "Fortsett"
 
-msgid "Saving..."
-msgstr "Lagrer..."
+msgid "Saving…"
+msgstr "Lagrer…"
 
 msgid "Save"
 msgstr "Lagre"
@@ -113,7 +116,7 @@ msgstr "Hjem"
 
 #, python-format
 msgid " By %(filter_title)s "
-msgstr " By %(filter_title)s "
+msgstr " På %(filter_title)s "
 
 #, python-format
 msgid "Sorry, there are no %(name)s matching your search parameters."
@@ -167,7 +170,6 @@ msgstr "Forrige"
 msgid "Next"
 msgstr "Neste"
 
-#, python-brace-format
 msgid "{model_name} '{instance}' created."
 msgstr "{model_name} '{instance}' opprettet."
 
@@ -189,7 +191,6 @@ msgstr "Redigerer"
 msgid "Editing %s"
 msgstr "Redigerer %s"
 
-#, python-brace-format
 msgid "{model_name} '{instance}' updated."
 msgstr "{model_name} '{instance}' oppdatert."
 
@@ -209,7 +210,6 @@ msgstr ""
 "Er du sikker på at du vil slette %s? Hvis andre ting på nettstedet er "
 "relatert kan de også bli påvirket."
 
-#, python-brace-format
 msgid "{model} '{instance}' deleted."
 msgstr "{model} '{instance}' slettet."
 

@@ -1,4 +1,4 @@
-from __future__ import absolute_import, unicode_literals
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.db import models
@@ -6,8 +6,8 @@ from django.utils.encoding import force_text
 from django.utils.six.moves.urllib.parse import urlparse
 
 from wagtail.utils.compat import coreschema
-from wagtail.wagtailcore.models import Page
-from wagtail.wagtailcore.utils import resolve_model_string
+from wagtail.core.models import Page
+from wagtail.core.utils import resolve_model_string
 
 
 class BadRequestError(Exception):
@@ -15,7 +15,7 @@ class BadRequestError(Exception):
 
 
 def get_base_url(request=None):
-    base_url = getattr(settings, 'WAGTAILAPI_BASE_URL', request.site.root_url if request else None)
+    base_url = getattr(settings, 'WAGTAILAPI_BASE_URL', request.site.root_url if request and request.site else None)
 
     if base_url:
         # We only want the scheme and netloc
@@ -27,6 +27,13 @@ def get_base_url(request=None):
 def get_full_url(request, path):
     base_url = get_base_url(request) or ''
     return base_url + path
+
+
+def get_object_detail_url(router, request, model, pk):
+    url_path = router.get_object_detail_urlpath(model, pk)
+
+    if url_path:
+        return get_full_url(request, url_path)
 
 
 def pages_for_site(site):

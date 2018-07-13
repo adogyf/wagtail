@@ -24,11 +24,7 @@ If the search index is kept separate from the database (when using Elasticsearch
 Signal handlers
 ---------------
 
-.. versionchanged:: 0.8
-
-    Signal handlers are now automatically registered
-
-``wagtailsearch`` provides some signal handlers which bind to the save/delete signals of all indexed models. This would automatically add and delete them from all backends you have registered in ``WAGTAILSEARCH_BACKENDS``. These signal handlers are automatically registered when the ``wagtail.wagtailsearch`` app is loaded.
+``wagtailsearch`` provides some signal handlers which bind to the save/delete signals of all indexed models. This would automatically add and delete them from all backends you have registered in ``WAGTAILSEARCH_BACKENDS``. These signal handlers are automatically registered when the ``wagtail.search`` app is loaded.
 
 
 The ``update_index`` command
@@ -53,7 +49,7 @@ Indexing extra fields
 
 .. warning::
 
-    Indexing extra fields is only supported with ElasticSearch as your backend. If you're using the database backend, any other fields you define via ``search_fields`` will be ignored.
+    Indexing extra fields is not supported by the database backend. If you're using the database backend, any other fields you define via ``search_fields`` will be ignored.
 
 
 Fields must be explicitly added to the ``search_fields`` property of your ``Page``-derived model, in order for you to be able to search/filter on them. This is done by overriding ``search_fields`` to append a list of extra ``SearchField``/``FilterField`` objects to it.
@@ -67,7 +63,7 @@ This creates an ``EventPage`` model with two fields: ``description`` and ``date`
 
 .. code-block:: python
 
-    from wagtail.wagtailsearch import index
+    from wagtail.search import index
     from django.utils import timezone
 
     class EventPage(Page):
@@ -115,7 +111,9 @@ For example, if we have a book that has a ``ForeignKey`` to its author, we can n
 
 .. code-block:: python
 
-    class Book(models.Model, indexed.Indexed):
+    from wagtail.search import index
+
+    class Book(models.Model, index.Indexed):
         ...
 
         search_fields = [
@@ -134,7 +132,9 @@ It works the other way around as well. You can index an author's books, allowing
 
 .. code-block:: python
 
-    class Author(models.Model, indexed.Indexed):
+    from wagtail.search import index
+
+    class Author(models.Model, index.Indexed):
         ...
 
         search_fields = [
@@ -170,7 +170,7 @@ One use for this is indexing the ``get_*_display`` methods Django creates automa
 
 .. code-block:: python
 
-    from wagtail.wagtailsearch import index
+    from wagtail.search import index
 
     class EventPage(Page):
         IS_PRIVATE_CHOICES = (
@@ -214,12 +214,12 @@ To do this, inherit from ``index.Indexed`` and add some ``search_fields`` to the
 
 .. code-block:: python
 
-    from wagtail.wagtailsearch import index
+    from wagtail.search import index
 
     class Book(index.Indexed, models.Model):
         title = models.CharField(max_length=255)
         genre = models.CharField(max_length=255, choices=GENRE_CHOICES)
-        author = models.ForeignKey(Author)
+        author = models.ForeignKey(Author, on_delete=models.CASCADE)
         published_date = models.DateTimeField()
 
         search_fields = [
@@ -232,7 +232,7 @@ To do this, inherit from ``index.Indexed`` and add some ``search_fields`` to the
         ]
 
     # As this model doesn't have a search method in its QuerySet, we have to call search directly on the backend
-    >>> from wagtail.wagtailsearch.backends import get_search_backend
+    >>> from wagtail.search.backends import get_search_backend
     >>> s = get_search_backend()
 
     # Run a search for a book by Roald Dahl

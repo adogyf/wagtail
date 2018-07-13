@@ -21,17 +21,19 @@ except ImportError:
 
 
 install_requires = [
-    "Django>=1.8.1,<1.12",
-    "django-modelcluster>=3.1,<4.0",
-    "django-taggit>=0.20,<1.0",
-    "django-treebeard>=3.0,<5.0",
-    "djangorestframework>=3.1.3",
-    "Pillow>=2.6.1",
-    "beautifulsoup4>=4.5.1",
-    "html5lib>=0.999,<1",
-    "Unidecode>=0.04.14",
-    "Willow>=0.4,<0.5",
+    "Django>=1.11,<2.1",
+    "django-modelcluster>=4.0,<5.0",
+    "django-taggit>=0.22.2,<1.0",
+    "django-treebeard>=4.2.0,<5.0",
+    "djangorestframework>=3.7.4,<4.0",
+    "draftjs_exporter>=2.0,<3.0",
+    "Pillow>=4.0.0,<6.0",
+    "beautifulsoup4>=4.5.1,<5.0",
+    "html5lib>=0.999,<2",
+    "Unidecode>=0.04.14,<2.0",
+    "Willow>=1.1,<1.2",
     "requests>=2.11.1,<3.0",
+    "l18n",
 ]
 
 # Testing dependencies
@@ -40,15 +42,15 @@ testing_extras = [
     'mock>=1.0.0',
     'python-dateutil>=2.2',
     'pytz>=2014.7',
-    'Pillow>=2.7.0',
     'elasticsearch>=1.0.0,<3.0',
     'Jinja2>=2.8,<3.0',
     'boto3>=1.4,<1.5',
+    'freezegun>=0.3.8',
 
     # For coverage and PEP8 linting
     'coverage>=3.7.0',
     'flake8>=2.2.0',
-    'isort>=4.2.0',
+    'isort==4.2.5',
     'flake8-blind-except==0.1.1',
     'flake8-print==2.0.2',
 ]
@@ -65,14 +67,19 @@ documentation_extras = [
 setup(
     name='wagtail',
     version=__version__,
-    description='A Django content management system focused on flexibility and user experience',
-    author='Matthew Westcott',
-    author_email='matthew.westcott@torchbox.com',
+    description='A Django content management system.',
+    author='Wagtail core team + contributors',
+    author_email='hello@wagtail.io',  # For support queries, please see http://docs.wagtail.io/en/stable/support.html
     url='http://wagtail.io/',
     packages=find_packages(),
     include_package_data=True,
     license='BSD',
-    long_description=open('README.rst').read(),
+    long_description="Wagtail is an open source content management \
+system built on Django, with a strong community and commercial support. \
+It’s focused on user experience, and offers precise control for \
+designers and developers.\n\n\
+For more details, see https://wagtail.io, http://docs.wagtail.io and \
+https://github.com/wagtail/wagtail/.",
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
@@ -80,16 +87,14 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Framework :: Django',
-        'Framework :: Django :: 1.8',
-        'Framework :: Django :: 1.10',
         'Framework :: Django :: 1.11',
+        'Framework :: Django :: 2.0',
+        'Framework :: Wagtail',
         'Topic :: Internet :: WWW/HTTP :: Site Management',
     ],
     install_requires=install_requires,

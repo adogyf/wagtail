@@ -1,14 +1,12 @@
-from __future__ import absolute_import, unicode_literals
-
 import json
 
 import mock
-from django.core.urlresolvers import reverse
 from django.test import TestCase
 from django.test.utils import override_settings
+from django.urls import reverse
 
 from wagtail.api.v2 import signal_handlers
-from wagtail.wagtaildocs.models import get_document_model
+from wagtail.documents.models import get_document_model
 
 
 class TestDocumentListing(TestCase):
@@ -271,6 +269,14 @@ class TestDocumentListing(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(content, {'message': "limit cannot be higher than 20"})
 
+    @override_settings(WAGTAILAPI_LIMIT_MAX=None)
+    def test_limit_max_none_gives_no_errors(self):
+        response = self.get_response(limit=1000000)
+        content = json.loads(response.content.decode('UTF-8'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(content['items']), get_document_model().objects.count())
+
     @override_settings(WAGTAILAPI_LIMIT_MAX=10)
     def test_limit_maximum_can_be_changed(self):
         response = self.get_response(limit=20)
@@ -479,16 +485,54 @@ class TestDocumentDetail(TestCase):
         self.assertEqual(content, {'message': "'title' does not support nested fields"})
 
 
+class TestDocumentFind(TestCase):
+    fixtures = ['demosite.json']
+
+    def get_response(self, **params):
+        return self.client.get(reverse('wagtailapi_v2:documents:find'), params)
+
+    def test_without_parameters(self):
+        response = self.get_response()
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response['Content-type'], 'application/json')
+
+        # Will crash if the JSON is invalid
+        content = json.loads(response.content.decode('UTF-8'))
+
+        self.assertEqual(content, {
+            'message': 'not found'
+        })
+
+    def test_find_by_id(self):
+        response = self.get_response(id=5)
+
+        self.assertRedirects(response, 'http://localhost' + reverse('wagtailapi_v2:documents:detail', args=[5]), fetch_redirect_response=False)
+
+    def test_find_by_id_nonexistent(self):
+        response = self.get_response(id=1234)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response['Content-type'], 'application/json')
+
+        # Will crash if the JSON is invalid
+        content = json.loads(response.content.decode('UTF-8'))
+
+        self.assertEqual(content, {
+            'message': 'not found'
+        })
+
+
 @override_settings(
     WAGTAILFRONTENDCACHE={
         'varnish': {
-            'BACKEND': 'wagtail.contrib.wagtailfrontendcache.backends.HTTPBackend',
+            'BACKEND': 'wagtail.contrib.frontend_cache.backends.HTTPBackend',
             'LOCATION': 'http://localhost:8000',
         },
     },
     WAGTAILAPI_BASE_URL='http://api.example.com',
 )
-@mock.patch('wagtail.contrib.wagtailfrontendcache.backends.HTTPBackend.purge')
+@mock.patch('wagtail.contrib.frontend_cache.backends.HTTPBackend.purge')
 class TestDocumentCacheInvalidation(TestCase):
     fixtures = ['demosite.json']
 

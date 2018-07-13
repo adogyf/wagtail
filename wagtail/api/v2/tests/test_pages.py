@@ -1,17 +1,16 @@
-from __future__ import absolute_import, unicode_literals
-
 import collections
 import json
-
 import mock
-from django.core.urlresolvers import reverse
+
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from django.test.utils import override_settings
+from django.urls import reverse
 
 from wagtail.api.v2 import signal_handlers
+from wagtail.core.models import Page, Site
 from wagtail.tests.demosite import models
 from wagtail.tests.testapp.models import StreamPage
-from wagtail.wagtailcore.models import Page
 
 
 def get_total_page_count():
@@ -81,6 +80,17 @@ class TestPageListing(TestCase):
         response = self.get_response()
         content = json.loads(response.content.decode('UTF-8'))
         self.assertEqual(content['meta']['total_count'], new_total_count)
+
+    def test_page_listing_with_missing_page_model(self):
+        # Create a ContentType that doesn't correspond to a real model
+        missing_page_content_type = ContentType.objects.create(app_label='tests', model='missingpage')
+
+        # Turn a BlogEntryPage into this content_type
+        models.BlogEntryPage.objects.filter(id=16).update(content_type=missing_page_content_type)
+
+        # get page listing with missing model
+        response = self.get_response()
+        self.assertEqual(response.status_code, 200)
 
     # TYPE FILTER
 
@@ -633,6 +643,14 @@ class TestPageListing(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(content, {'message': "limit cannot be higher than 20"})
 
+    @override_settings(WAGTAILAPI_LIMIT_MAX=None)
+    def test_limit_max_none_gives_no_errors(self):
+        response = self.get_response(limit=1000000)
+        content = json.loads(response.content.decode('UTF-8'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(content['items']), get_total_page_count())
+
     @override_settings(WAGTAILAPI_LIMIT_MAX=10)
     def test_limit_maximum_can_be_changed(self):
         response = self.get_response(limit=20)
@@ -699,6 +717,23 @@ class TestPageListing(TestCase):
 
         self.assertEqual(set(page_id_list), set([16, 18, 19]))
 
+    def test_search_with_filter(self):
+        response = self.get_response(title="Another blog post", search='blog', order='title')
+        content = json.loads(response.content.decode('UTF-8'))
+
+        page_id_list = self.get_page_id_list(content)
+
+        self.assertEqual(page_id_list, [19])
+
+    def test_search_with_filter_on_non_filterable_field(self):
+        response = self.get_response(type='demosite.BlogEntryPage', body="foo", search='blog', order='title')
+        content = json.loads(response.content.decode('UTF-8'))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(content, {
+            'message': "cannot filter by 'body' while searching (field is not indexed)"
+        })
+
     def test_search_with_order(self):
         response = self.get_response(search='blog', order='title')
         content = json.loads(response.content.decode('UTF-8'))
@@ -706,6 +741,15 @@ class TestPageListing(TestCase):
         page_id_list = self.get_page_id_list(content)
 
         self.assertEqual(page_id_list, [19, 5, 16, 18])
+
+    def test_search_with_order_on_non_filterable_field(self):
+        response = self.get_response(type='demosite.BlogEntryPage', search='blog', order='body')
+        content = json.loads(response.content.decode('UTF-8'))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(content, {
+            'message': "cannot order by 'body' while searching (field is not indexed)"
+        })
 
     @override_settings(WAGTAILAPI_SEARCH_ENABLED=False)
     def test_search_when_disabled_gives_error(self):
@@ -744,6 +788,14 @@ class TestPageListing(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-type'], 'application/json')
         self.assertEqual(content['meta']['total_count'], 0)
+
+    # REGRESSION TESTS
+
+    def test_issue_3967(self):
+        # The API crashed whenever the listing view was called without a site configured
+        Site.objects.all().delete()
+        response = self.get_response()
+        self.assertEqual(response.status_code, 200)
 
 
 class TestPageDetail(TestCase):
@@ -864,6 +916,17 @@ class TestPageDetail(TestCase):
 
         self.assertIn('related_links', content)
         self.assertEqual(content['feed_image'], None)
+
+    def test_page_with_missing_page_model(self):
+        # Create a ContentType that doesn't correspond to a real model
+        missing_page_content_type = ContentType.objects.create(app_label='tests', model='missingpage')
+
+        # Turn a BlogEntryPage into this content_type
+        models.BlogEntryPage.objects.filter(id=16).update(content_type=missing_page_content_type)
+
+        # get missing model page
+        response = self.get_response(16)
+        self.assertEqual(response.status_code, 200)
 
     # FIELDS
 
@@ -998,6 +1061,67 @@ class TestPageDetail(TestCase):
         self.assertEqual(content, {'message': "'title' does not support nested fields"})
 
 
+class TestPageFind(TestCase):
+    fixtures = ['demosite.json']
+
+    def get_response(self, **params):
+        return self.client.get(reverse('wagtailapi_v2:pages:find'), params)
+
+    def test_without_parameters(self):
+        response = self.get_response()
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response['Content-type'], 'application/json')
+
+        # Will crash if the JSON is invalid
+        content = json.loads(response.content.decode('UTF-8'))
+
+        self.assertEqual(content, {
+            'message': 'not found'
+        })
+
+    def test_find_by_id(self):
+        response = self.get_response(id=5)
+
+        self.assertRedirects(response, 'http://localhost' + reverse('wagtailapi_v2:pages:detail', args=[5]), fetch_redirect_response=False)
+
+    def test_find_by_id_nonexistent(self):
+        response = self.get_response(id=1234)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response['Content-type'], 'application/json')
+
+        # Will crash if the JSON is invalid
+        content = json.loads(response.content.decode('UTF-8'))
+
+        self.assertEqual(content, {
+            'message': 'not found'
+        })
+
+    def test_find_by_html_path(self):
+        response = self.get_response(html_path='/events-index/event-1/')
+
+        self.assertRedirects(response, 'http://localhost' + reverse('wagtailapi_v2:pages:detail', args=[8]), fetch_redirect_response=False)
+
+    def test_find_by_html_path_with_start_and_end_slashes_removed(self):
+        response = self.get_response(html_path='events-index/event-1')
+
+        self.assertRedirects(response, 'http://localhost' + reverse('wagtailapi_v2:pages:detail', args=[8]), fetch_redirect_response=False)
+
+    def test_find_by_html_path_nonexistent(self):
+        response = self.get_response(html_path='/foo')
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response['Content-type'], 'application/json')
+
+        # Will crash if the JSON is invalid
+        content = json.loads(response.content.decode('UTF-8'))
+
+        self.assertEqual(content, {
+            'message': 'not found'
+        })
+
+
 class TestPageDetailWithStreamField(TestCase):
     fixtures = ['test.json']
 
@@ -1026,7 +1150,10 @@ class TestPageDetailWithStreamField(TestCase):
         self.assertIn('id', content)
         self.assertEqual(content['id'], stream_page.id)
         self.assertIn('body', content)
-        self.assertEqual(content['body'], [{'type': 'text', 'value': 'foo'}])
+        self.assertEqual(len(content['body']), 1)
+        self.assertEqual(content['body'][0]['type'], 'text')
+        self.assertEqual(content['body'][0]['value'], 'foo')
+        self.assertTrue(content['body'][0]['id'])
 
     def test_image_block(self):
         stream_page = self.make_stream_page('[{"type": "image", "value": 1}]')
@@ -1036,7 +1163,8 @@ class TestPageDetailWithStreamField(TestCase):
         content = json.loads(response.content.decode('utf-8'))
 
         # ForeignKeys in a StreamField shouldn't be translated into dictionary representation
-        self.assertEqual(content['body'], [{'type': 'image', 'value': 1}])
+        self.assertEqual(content['body'][0]['type'], 'image')
+        self.assertEqual(content['body'][0]['value'], 1)
 
     def test_image_block_with_custom_get_api_representation(self):
         stream_page = self.make_stream_page('[{"type": "image", "value": 1}]')
@@ -1048,19 +1176,20 @@ class TestPageDetailWithStreamField(TestCase):
         content = json.loads(response.content.decode('utf-8'))
 
         # the custom get_api_representation returns a dict of id and title for the image
-        self.assertEqual(content['body'], [{'type': 'image', 'value': {'id': 1, 'title': 'A missing image'}}])
+        self.assertEqual(content['body'][0]['type'], 'image')
+        self.assertEqual(content['body'][0]['value'], {'id': 1, 'title': 'A missing image'})
 
 
 @override_settings(
     WAGTAILFRONTENDCACHE={
         'varnish': {
-            'BACKEND': 'wagtail.contrib.wagtailfrontendcache.backends.HTTPBackend',
+            'BACKEND': 'wagtail.contrib.frontend_cache.backends.HTTPBackend',
             'LOCATION': 'http://localhost:8000',
         },
     },
     WAGTAILAPI_BASE_URL='http://api.example.com',
 )
-@mock.patch('wagtail.contrib.wagtailfrontendcache.backends.HTTPBackend.purge')
+@mock.patch('wagtail.contrib.frontend_cache.backends.HTTPBackend.purge')
 class TestPageCacheInvalidation(TestCase):
     fixtures = ['demosite.json']
 

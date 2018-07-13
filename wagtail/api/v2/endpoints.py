@@ -1,12 +1,10 @@
-from __future__ import absolute_import, unicode_literals
-
 from collections import OrderedDict
 
-from django.apps import apps
 from django.conf.urls import url
 from django.core.exceptions import FieldDoesNotExist
-from django.core.urlresolvers import reverse
 from django.http import Http404
+from django.shortcuts import redirect
+from django.urls import reverse
 from modelcluster.fields import ParentalKey
 from rest_framework import status
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
@@ -14,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from wagtail.api import APIField
-from wagtail.wagtailcore.models import Page
+from wagtail.core.models import Page
 
 from .filters import (
     FieldsFilter, OrderingFilter, RestrictedChildOfFilter, RestrictedDescendantOfFilter,
@@ -22,17 +20,12 @@ from .filters import (
 from .pagination import WagtailPagination
 from .serializers import BaseSerializer, PageSerializer, get_serializer_class
 from .utils import (
-    BadRequestError, filter_page_type, page_models_from_string, parse_fields_parameter)
+    BadRequestError, filter_page_type, get_object_detail_url, page_models_from_string,
+    parse_fields_parameter)
 
 
 class BaseAPIEndpoint(GenericViewSet):
-    renderer_classes = [JSONRenderer]
-
-    # The BrowsableAPIRenderer requires rest_framework to be installed
-    # Remove this check in Wagtail 1.4 as rest_framework will be required
-    # RemovedInWagtail14Warning
-    if apps.is_installed('rest_framework'):
-        renderer_classes.append(BrowsableAPIRenderer)
+    renderer_classes = [JSONRenderer, BrowsableAPIRenderer]
 
     pagination_class = WagtailPagination
     base_serializer_class = BaseSerializer
@@ -61,7 +54,7 @@ class BaseAPIEndpoint(GenericViewSet):
     name = None  # Set on subclass.
 
     def __init__(self, *args, **kwargs):
-        super(BaseAPIEndpoint, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # seen_types is a mapping of type name strings (format: "app_label.ModelName")
         # to model classes. When an object is serialised in the API, its model
@@ -85,6 +78,34 @@ class BaseAPIEndpoint(GenericViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    def find_view(self, request):
+        queryset = self.get_queryset()
+
+        try:
+            obj = self.find_object(queryset, request)
+
+            if obj is None:
+                raise self.model.DoesNotExist
+
+        except self.model.DoesNotExist:
+            raise Http404("not found")
+
+        # Generate redirect
+        url = get_object_detail_url(self.request.wagtailapi_router, request, self.model, obj.pk)
+
+        if url is None:
+            # Shouldn't happen unless this endpoint isn't actually installed in the router
+            raise Exception("Cannot generate URL to detail view. Is '{}' installed in the API router?".format(self.__class__.__name__))
+
+        return redirect(url)
+
+    def find_object(self, queryset, request):
+        """
+        Override this to implement more find methods.
+        """
+        if 'id' in request.GET:
+            return queryset.get(id=request.GET['id'])
+
     def handle_exception(self, exc):
         if isinstance(exc, Http404):
             data = {'message': str(exc)}
@@ -92,7 +113,7 @@ class BaseAPIEndpoint(GenericViewSet):
         elif isinstance(exc, BadRequestError):
             data = {'message': str(exc)}
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
-        return super(BaseAPIEndpoint, self).handle_exception(exc)
+        return super().handle_exception(exc)
 
     @classmethod
     def _convert_api_fields(cls, fields):
@@ -307,7 +328,7 @@ class BaseAPIEndpoint(GenericViewSet):
         }
 
     def get_renderer_context(self):
-        context = super(BaseAPIEndpoint, self).get_renderer_context()
+        context = super().get_renderer_context()
         context['indent'] = 4
         return context
 
@@ -319,7 +340,8 @@ class BaseAPIEndpoint(GenericViewSet):
         return [
             url(r'^$', cls.as_view({'get': 'list'}), name='listing'),
             url(r'^(?P<pk>\d+)/$', cls.as_view({'get': 'retrieve'}), name='detail'),
-        ]
+            url(r'^find/$', cls.as_view({'get': 'find_view'}), name='find'), 
+       ]
 
     @classmethod
     def get_model_listing_urlpath(cls, model, namespace=''):
@@ -403,10 +425,29 @@ class PagesAPIEndpoint(BaseAPIEndpoint):
         queryset = queryset.public().live()
 
         # Filter by site
-        queryset = queryset.descendant_of(request.site.root_page, inclusive=True)
+        if request.site:
+            queryset = queryset.descendant_of(request.site.root_page, inclusive=True)
+        else:
+            # No sites configured
+            queryset = queryset.none()
 
         return queryset
 
     def get_object(self):
-        base = super(PagesAPIEndpoint, self).get_object()
+        base = super().get_object()
         return base.specific
+
+    def find_object(self, queryset, request):
+        if 'html_path' in request.GET and request.site is not None:
+            path = request.GET['html_path']
+            path_components = [component for component in path.split('/') if component]
+
+            try:
+                page, _, _ = request.site.root_page.specific.route(request, path_components)
+            except Http404:
+                return
+
+            if queryset.filter(id=page.id).exists():
+                return page
+
+        return super().find_object(queryset, request)
