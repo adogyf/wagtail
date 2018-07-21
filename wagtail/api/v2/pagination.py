@@ -3,10 +3,9 @@ from collections import OrderedDict
 from django.conf import settings
 from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
+from rest_framework.compat import coreapi, coreschema
 from rest_framework.pagination import BasePagination
 from rest_framework.response import Response
-
-from wagtail.utils.compat import coreapi, coreschema
 
 from .utils import BadRequestError
 

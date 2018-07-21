@@ -3,9 +3,8 @@ from urllib.parse import urlparse
 from django.conf import settings
 from django.db import models
 from django.utils.encoding import force_text
-from django.utils.six.moves.urllib.parse import urlparse
+from rest_framework.compat import coreschema
 
-from wagtail.utils.compat import coreschema
 from wagtail.core.models import Page
 from wagtail.core.utils import resolve_model_string
 
