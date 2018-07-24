@@ -7,8 +7,10 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from modelcluster.fields import ParentalKey
 from rest_framework import status
+from rest_framework.compat import coreapi, coreschema
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
+from rest_framework.schemas import AutoSchema
 from rest_framework.viewsets import GenericViewSet
 
 from wagtail.api import APIField
@@ -52,6 +54,18 @@ class BaseAPIEndpoint(GenericViewSet):
     nested_default_fields = ['id', 'type', 'detail_url']
     detail_only_fields = []
     name = None  # Set on subclass.
+    if coreapi is not None and coreschema is not None:
+        schema = AutoSchema(manual_fields=[
+            coreapi.Field(
+                'fields',
+                required=True,
+                location="path",
+                schema=coreschema.String(
+                    title='fields',
+                    description='Add additional fields to the response or remove default ones',
+                )
+            ),
+        ])
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -340,8 +354,8 @@ class BaseAPIEndpoint(GenericViewSet):
         return [
             url(r'^$', cls.as_view({'get': 'list'}), name='listing'),
             url(r'^(?P<pk>\d+)/$', cls.as_view({'get': 'retrieve'}), name='detail'),
-            url(r'^find/$', cls.as_view({'get': 'find_view'}), name='find'), 
-       ]
+            url(r'^find/$', cls.as_view({'get': 'find_view'}), name='find'),
+        ]
 
     @classmethod
     def get_model_listing_urlpath(cls, model, namespace=''):

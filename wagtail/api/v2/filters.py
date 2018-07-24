@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
+from rest_framework.compat import coreapi, coreschema
 from rest_framework.filters import BaseFilterBackend
 from taggit.managers import TaggableManager
 
@@ -197,8 +198,7 @@ class SearchFilter(BaseFilterBackend):
                 name=self.search_operator_param,
                 required=False,
                 location='query',
-                # TODO: Use Enum once https://github.com/core-api/python-client/pull/126 merged
-                schema=coreschema.String(
+                schema=coreschema.Enum(
                     title=force_text(self.search_operator_title),
                     description=force_text(self.search_operator_description)
                 )
@@ -214,7 +214,7 @@ class ChildOfFilter(BaseFilterBackend):
     child_of_param = 'child_of'
     child_of_title = _('Direct children of a page')
     child_of_description = _(
-        'Id of a page to filters the list of results to contain only direct children of that page.'
+        'Filter the results to only contain pages that are direct children of the specified page.'
     )
 
     def get_root_page(self, request):
@@ -265,6 +265,12 @@ class RestrictedChildOfFilter(ChildOfFilter):
     A restricted version of ChildOfFilter that only allows pages in the current
     site to be specified.
     """
+    child_of_title = _('Direct children of a page within current site')
+    child_of_description = _(
+        'Filter the results to only contain pages that are direct children of '
+        'the specified page and are part of the current site.'
+    )
+
     def get_root_page(self, request):
         return request.site.root_page
 
@@ -281,7 +287,7 @@ class DescendantOfFilter(BaseFilterBackend):
     descendant_of_param = 'descendant_of'
     descendant_of_title = _('All descendants of a page')
     descendant_of_description = _(
-        'Id of a page to filters the list of results to contain all descendants (children of children) of that page.'
+        'Limit the set of pages to a particular branch of the page tree.'
     )
 
     def get_root_page(self, request):
@@ -335,6 +341,11 @@ class RestrictedDescendantOfFilter(DescendantOfFilter):
     A restricted version of DecendantOfFilter that only allows pages in the current
     site to be specified.
     """
+    descendant_of_title = _('All descendants of a page within current site')
+    descendant_of_description = _(
+        'Limit the set of pages to a particular branch of the page tree in the current site.'
+    )
+
     def get_root_page(self, request):
         return request.site.root_page
 
@@ -344,6 +355,10 @@ class RestrictedDescendantOfFilter(DescendantOfFilter):
 
 
 class ForExplorerFilter(BaseFilterBackend):
+    query_param = 'for_explorer'
+    title = _('For explorer')
+    description = _('')
+
     def filter_queryset(self, request, queryset, view):
         if request.GET.get('for_explorer'):
             if not hasattr(queryset, '_filtered_by_child_of'):
@@ -354,3 +369,18 @@ class ForExplorerFilter(BaseFilterBackend):
                 queryset = hook(parent_page, queryset, request)
 
         return queryset
+
+    def get_schema_fields(self, view):
+        assert coreapi is not None, 'coreapi must be installed to use `get_schema_fields()`'
+        assert coreschema is not None, 'coreschema must be installed to use `get_schema_fields()`'
+        return [
+            coreapi.Field(
+                name=self.query_param,
+                required=False,
+                location='query',
+                schema=coreschema.String(
+                    title=force_text(self.title),
+                    description=force_text(self.description)
+                )
+            )
+        ]
