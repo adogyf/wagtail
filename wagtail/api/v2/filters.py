@@ -2,10 +2,10 @@ from django.conf import settings
 from django.db import models
 from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
-from rest_framework.compat import coreapi, coreschema
-from rest_framework.filters import BaseFilterBackend
 from taggit.managers import TaggableManager
 
+from rest_framework.compat import coreapi, coreschema
+from rest_framework.filters import BaseFilterBackend
 from wagtail.core import hooks
 from wagtail.core.models import Page
 from wagtail.search.backends import get_search_backend
