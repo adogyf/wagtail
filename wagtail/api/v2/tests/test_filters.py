@@ -2,6 +2,7 @@ from django.db import models
 from django.test import TestCase
 from django.utils.encoding import force_text
 from taggit.managers import TaggableManager
+import unittest
 
 from rest_framework import generics
 from rest_framework.compat import coreapi, coreschema
@@ -16,11 +17,10 @@ class FieldsFilterModel(models.Model):
 
 
 class FieldsFilterTest(TestCase):
-    maxDiff = None
-
     def setUp(self):
         self.filter_backend = filters.FieldsFilter()
 
+    @unittest.skipIf(not coreschema, 'coreschema is not installed')
     def test_get_schema_fields(self):
 
         class FieldsListView(generics.ListAPIView):
