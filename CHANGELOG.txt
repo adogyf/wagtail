@@ -1,9 +1,19 @@
 Changelog
 =========
 
+2.3 LTS (xx.xx.xxxx) - IN DEVELOPMENT
+~~~~~~~~~~~~~~~~~~~~
+
+ * Added support for Django 2.1 (Ryan Verner, Matt Westcott)
+ * Added 'scale' image filter (Oliver Wilkerson)
+ * Added meta tag to prevent search engines from indexing admin pages (Karl Hobley)
+
+
 2.2 (xx.xx.xxx) - IN DEVELOPMENT
 ~~~~~~~~~~~~~~~
 
+ * Added faceted search using the `.facet()` method (Karl Hobley)
+ * Added page type filtering and ordering to the Wagtail admin page search (Karl Hobley)
  * Added another valid AudioBoom oEmbed pattern (Bertrand Bordage)
  * Added `annotate_score` support to PostgreSQL search backend (Bertrand Bordage)
  * Pillow's image optimisation is now applied when saving PNG images (Dmitry Vasilev)
@@ -17,7 +27,6 @@ Changelog
  * Increased max length of redirect URL field to 255 (Michael Harrison)
  * Added documentation for new JS/CSS media files association with Draftail feature definitions (Ed Henderson)
  * Added accessible colour contrast guidelines to the style guide (Catherine Farman)
- * Added faceted search using the `.facet()` method (Karl Hobley)
  * Admin modal views no longer rely on Javascript `eval()`, for better CSP compliance (Matt Westcott)
  * Update editor guide for embeds and documents in rich text (Kevin Howbrook)
  * Improved performance of sitemap generation (Michael van Tellingen, Bertrand Bordage)
@@ -31,6 +40,14 @@ Changelog
  * Fix: Null characters in URLs no longer crash the redirect middleware on PostgreSQL (Andrew Crewdson, Matt Westcott)
  * Fix: Permission checks no longer prevent a non-live page from being unscheduled (Abdulmalik Abdulwahab)
  * Fix: Copy-paste between Draftail editors now preserves all formatting/content (Thibaud Colas)
+ * Fix: Fix alignment of checkboxes and radio buttons on Firefox (Matt Westcott)
+
+
+2.1.2 (06.08.2018)
+~~~~~~~~~~~~~~~~~~
+
+ * Fix: Bundle the l18n package to avoid installation issues on systems with a non-Unicode locale (Matt Westcott)
+ * Fix: Mark Beautiful Soup 4.6.1 as incompatible due to bug in formatting empty elements (Matt Westcott)
 
 
 2.1.1 (04.07.2018)
