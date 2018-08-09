@@ -55,18 +55,6 @@ class BaseAPIEndpoint(GenericViewSet):
     nested_default_fields = ['id', 'type', 'detail_url']
     detail_only_fields = []
     name = None  # Set on subclass.
-    if coreapi is not None and coreschema is not None:
-        schema = AutoSchema(manual_fields=[
-            coreapi.Field(
-                'fields',
-                required=True,
-                location="path",
-                schema=coreschema.String(
-                    title='fields',
-                    description='Add additional fields to the response or remove default ones',
-                )
-            ),
-        ])
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -82,7 +70,7 @@ class BaseAPIEndpoint(GenericViewSet):
 
     @action(methods=['get'], detail=False)
     def listing_view(self, request):
-        # TODO: list
+        # TODO: Change method name to list
         queryset = self.get_queryset()
         self.check_query_parameters(queryset)
         queryset = self.filter_queryset(queryset)
@@ -92,7 +80,7 @@ class BaseAPIEndpoint(GenericViewSet):
 
     @action(methods=['get'], detail=True)
     def detail_view(self, request, pk):
-        # TODO: retrieve
+        # TODO: Change method name to retrieve
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)

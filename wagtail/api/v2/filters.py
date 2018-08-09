@@ -11,7 +11,7 @@ from wagtail.core.models import Page
 from wagtail.search.backends import get_search_backend
 from wagtail.search.backends.base import FilterFieldError, OrderByFieldError
 
-from .utils import BadRequestError, field_to_schema, pages_for_site, parse_boolean
+from .utils import BadRequestError, get_schema_cls, pages_for_site, parse_boolean
 
 
 class FieldsFilter(BaseFilterBackend):
@@ -69,12 +69,17 @@ class FieldsFilter(BaseFilterBackend):
         for field_name in fields:
             field = model._meta.get_field(field_name)
 
-            schema = field_to_schema(field)
+            if isinstance(field, TaggableManager):
+                description = 'Filter results using a comma-separated list of tags.'
+            else:
+                description = 'Filter results using an exact match.'
+
+            schema_cls = get_schema_cls(field)
             schema_fields.append(coreapi.Field(
                 name=field_name,
                 required=False,
                 location='query',
-                schema=schema
+                schema=schema_cls(title=field_name, description=description)
             ))
 
         return schema_fields

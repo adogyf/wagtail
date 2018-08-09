@@ -244,15 +244,12 @@ def parse_boolean(value):
         raise ValueError("expected 'true' or 'false', got '%s'" % value)
 
 
-def field_to_schema(field):
+def get_schema_cls(field):
     """
-    Takes a field instance and returns corresponding coreschema class instance.
+    Takes a field instance and returns corresponding coreschema class.
     """
 
     assert coreschema is not None, 'coreschema must be installed to use `field_to_schema()`'
-
-    title = force_text(getattr(field, 'label', ''))
-    description = force_text(getattr(field, 'help_text', ''))
 
     integer_fields = (
         models.AutoField, models.BigIntegerField, models.IntegerField,
@@ -268,4 +265,4 @@ def field_to_schema(field):
     else:
         schema_cls = coreschema.String
 
-    return schema_cls(title, description)
+    return schema_cls
