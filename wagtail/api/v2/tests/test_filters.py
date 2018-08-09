@@ -1,3 +1,4 @@
+from django.apps import apps
 from django.db import models
 from django.test import TestCase
 from django.utils.encoding import force_text
@@ -20,6 +21,16 @@ class FieldsFilterTest(TestCase):
     def setUp(self):
         self.filter_backend = filters.FieldsFilter()
         self.maxDiff = None
+
+    def tearDown(self):
+        # unregister FieldsListView from the overall model registry
+        # so that it doesn't break tests elsewhere
+        for package in ('wagtailcore', 'wagtail.api.v2.tests'):
+            try:
+                del apps.all_models[package]['feildslistview']
+            except KeyError:
+                pass
+        apps.clear_cache()
 
     @unittest.skipIf(not coreschema, 'coreschema is not installed')
     def test_get_schema_fields(self):
