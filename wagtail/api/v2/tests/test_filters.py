@@ -25,9 +25,9 @@ class FieldsFilterTest(TestCase):
     def tearDown(self):
         # unregister FieldsListView from the overall model registry
         # so that it doesn't break tests elsewhere
-        for package in ('wagtailcore', 'wagtail.api.v2.tests'):
+        for package in ('wagtailapi_v2', 'wagtail.api.v2.tests'):
             try:
-                del apps.all_models[package]['feildslistview']
+                del apps.all_models[package]['fieldsfiltermodel']
             except KeyError:
                 pass
         apps.clear_cache()
